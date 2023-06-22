@@ -4,7 +4,7 @@ from scipy.stats import spearmanr
 
 import lightgbm as lgb
 import xgboost as xgb
-from sklearn.ensemble import RandomForestRegressor, VotingRegressor
+from sklearn.ensemble import RandomForestRegressor
 from sklearn.svm import SVR
 from sklearn.linear_model import Ridge, HuberRegressor
 
@@ -46,9 +46,9 @@ class OptimizerPipeline(ABC):
             
 
 class lgbm_optimizer(OptimizerPipeline):
-    def __init__(self, train_x, valid_x, train_y, valid_y):
+    def __init__(self, train_x, valid_x, train_y, valid_y, seed=42):
         super().__init__(train_x, valid_x, train_y, valid_y)
-        self.model = lgb.LGBMRegressor()
+        self.model = lgb.LGBMRegressor(random_state=seed)
 
     def objective(self, trial):
         self.param = {
@@ -69,9 +69,9 @@ class lgbm_optimizer(OptimizerPipeline):
 
 
 class xgb_optimizer(OptimizerPipeline):
-    def __init__(self, train_x, valid_x, train_y, valid_y):
+    def __init__(self, train_x, valid_x, train_y, valid_y, seed=42):
         super().__init__(train_x, valid_x, train_y, valid_y)
-        self.model = xgb.XGBRegressor()
+        self.model = xgb.XGBRegressor(random_state=seed)
 
     def objective(self, trial):
         self.param = {
@@ -93,9 +93,9 @@ class xgb_optimizer(OptimizerPipeline):
         
 
 class rf_optimizer(OptimizerPipeline):
-    def __init__(self, train_x, valid_x, train_y, valid_y):
+    def __init__(self, train_x, valid_x, train_y, valid_y, seed=42):
         super().__init__(train_x, valid_x, train_y, valid_y)
-        self.model = RandomForestRegressor()
+        self.model = RandomForestRegressor(random_state=seed)
 
     def objective(self, trial):
         self.param = {
