@@ -1,6 +1,9 @@
 from abc import ABC, abstractmethod
+import json
+import os
 
 from scipy.stats import spearmanr
+import numpy as np
 
 import lightgbm as lgb
 import xgboost as xgb
@@ -27,12 +30,13 @@ class OptimizerPipeline(ABC):
         self.model.fit(self.train_x, self.train_y)
         return metric_train(self.valid_y, self.model.predict(self.valid_x))
 
-    def run(self, verbose=1, seed=10, save_best_model=True):
+    def run(self, verbose=1, seed=10):
         sampler = optuna.samplers.TPESampler(seed=seed)  # Make the sampler behave in a deterministic way.
         study = optuna.create_study(direction="maximize", sampler=sampler)
         optuna.logging.set_verbosity(optuna.logging.ERROR)
         study.optimize(self.objective, n_trials=200)
         self.trial = study.best_trial
+        self.model.set_params(**self.trial.params)
         
         if verbose == 1:
             print(f"Best trial among {len(study.trials)} trials:")
@@ -41,8 +45,15 @@ class OptimizerPipeline(ABC):
             print("  Params: ")
             for key, value in self.trial.params.items():
                 print("    {}: {}".format(key, value))
-        if save_best_model:
-            self.model.set_params(**self.trial.params)
+        
+    def dump_best_model(self, PATH):
+        model_dict = {
+            'value': self.trial.value,
+            'params': self.model.get_params(),
+        }
+        with open(PATH, 'w') as fp:
+            json.dump(model_dict, fp)
+            
             
 
 class lgbm_optimizer(OptimizerPipeline):
@@ -146,3 +157,43 @@ class huber_optimizer(OptimizerPipeline):
             "fit_intercept": trial.suggest_categorical("fit_intercept", [True, False]),
         }
         return super().objective()
+
+
+class model_box:
+    def __init__(self, MODELS_PATH):
+        self.MODELS_PATH = MODELS_PATH
+        files = os.listdir(MODELS_PATH)
+        self.model_names = np.unique([f.split("_")[0] for f in files])
+        self.model_types = np.unique([f.split("_")[1].strip('.json') for f in files])
+
+    def get_model(self, model_name):
+        if model_name == 'lgbm':
+            return lgb.LGBMRegressor()
+        elif model_name == 'xgb':
+            return xgb.XGBRegressor()
+        elif model_name == 'rf':
+            return RandomForestRegressor()
+        elif model_name == 'svr':
+            return SVR()
+        elif model_name == 'ridge':
+            return Ridge()
+        elif model_name == 'huber':
+            return HuberRegressor()
+        else:
+            raise ValueError('Unknown model.')
+
+    def to_dicts(self):
+        model_candidates, model_scores = {}, {}
+        for mname in self.model_names:
+            model_type_dict, score_type_dict = {}, {}
+
+            for mtype in self.model_types:
+                with open(f'{self.MODELS_PATH}/{mname}_{mtype}.json', 'r') as fp:
+                    tmp = json.load(fp)
+                    model_type_dict[mtype] = self.get_model(mname).set_params(**tmp['params'])
+                    score_type_dict[mtype] = tmp['value']
+                    fp.close()
+
+            model_candidates[mname] = model_type_dict
+            model_scores[mname] = score_type_dict
+        return model_candidates, model_scores

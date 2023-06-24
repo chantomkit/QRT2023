@@ -94,7 +94,7 @@ class RegionalDatasets(dataset):
             y_col=y_col
         )
 
-    def as_dict(self):
+    def to_dict(self):
         data_dict = {
             'full': 
             {
