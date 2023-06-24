@@ -10,25 +10,56 @@ import xgboost as xgb
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.svm import SVR
 from sklearn.linear_model import Ridge, HuberRegressor
+from sklearn.neighbors import KNeighborsRegressor
+
+from sklearn.model_selection import cross_val_score
+from sklearn.metrics import make_scorer
 
 import optuna
 
 def metric_train(output, truth):
     return spearmanr(output, truth).correlation
 
+def _get_model(model_name):
+    if model_name == 'lgbm':
+        return lgb.LGBMRegressor()
+    elif model_name == 'xgb':
+        return xgb.XGBRegressor()
+    elif model_name == 'rf':
+        return RandomForestRegressor()
+    elif model_name == 'svr':
+        return SVR()
+    elif model_name == 'ridge':
+        return Ridge()
+    elif model_name == 'huber':
+        return HuberRegressor()
+    elif model_name == 'knn':
+        return KNeighborsRegressor()
+    else:
+        raise ValueError('Unknown model.')
+
+scorer_train = make_scorer(metric_train)
+
 class OptimizerPipeline(ABC):
-    def __init__(self, train_x, valid_x, train_y, valid_y):
-        self.train_x = train_x
-        self.valid_x = valid_x
-        self.train_y = train_y
-        self.valid_y = valid_y
+    def __init__(self, X_y_dict, model_type="both", cv:int=0):
+        self.cv = cv
+
+        self.train_x = X_y_dict["train"][model_type]["X"]
+        self.train_y = X_y_dict["train"][model_type]["y"]
+        if not self.cv:
+            self.valid_x = X_y_dict["valid"][model_type]["X"]
+            self.valid_y = X_y_dict["valid"][model_type]["y"]
+
         self.model, self.param = None, None
     
     @abstractmethod
     def objective(self):
         self.model.set_params(**self.param)
-        self.model.fit(self.train_x, self.train_y)
-        return metric_train(self.valid_y, self.model.predict(self.valid_x))
+        if self.cv:
+            return np.mean(cross_val_score(self.model, self.train_x, self.train_y, scoring=scorer_train, cv=self.cv))
+        else:
+            self.model.fit(self.train_x, self.train_y)
+            return metric_train(self.valid_y, self.model.predict(self.valid_x))
 
     def run(self, verbose=1, seed=10):
         sampler = optuna.samplers.TPESampler(seed=seed)  # Make the sampler behave in a deterministic way.
@@ -57,8 +88,8 @@ class OptimizerPipeline(ABC):
             
 
 class lgbm_optimizer(OptimizerPipeline):
-    def __init__(self, train_x, valid_x, train_y, valid_y, seed=42):
-        super().__init__(train_x, valid_x, train_y, valid_y)
+    def __init__(self, X_y_dict, model_type="both", cv:int=0, seed=42):
+        super().__init__(X_y_dict, model_type, cv)
         self.model = lgb.LGBMRegressor(random_state=seed)
 
     def objective(self, trial):
@@ -80,8 +111,8 @@ class lgbm_optimizer(OptimizerPipeline):
 
 
 class xgb_optimizer(OptimizerPipeline):
-    def __init__(self, train_x, valid_x, train_y, valid_y, seed=42):
-        super().__init__(train_x, valid_x, train_y, valid_y)
+    def __init__(self, X_y_dict, model_type="both", cv:int=0, seed=42):
+        super().__init__(X_y_dict, model_type, cv)
         self.model = xgb.XGBRegressor(random_state=seed)
 
     def objective(self, trial):
@@ -104,8 +135,8 @@ class xgb_optimizer(OptimizerPipeline):
         
 
 class rf_optimizer(OptimizerPipeline):
-    def __init__(self, train_x, valid_x, train_y, valid_y, seed=42):
-        super().__init__(train_x, valid_x, train_y, valid_y)
+    def __init__(self, X_y_dict, model_type="both", cv:int=0, seed=42):
+        super().__init__(X_y_dict, model_type, cv)
         self.model = RandomForestRegressor(random_state=seed)
 
     def objective(self, trial):
@@ -122,8 +153,8 @@ class rf_optimizer(OptimizerPipeline):
         return super().objective()
 
 class svr_optimizer(OptimizerPipeline):
-    def __init__(self, train_x, valid_x, train_y, valid_y):
-        super().__init__(train_x, valid_x, train_y, valid_y)
+    def __init__(self, X_y_dict, model_type="both", cv:int=0):
+        super().__init__(X_y_dict, model_type, cv)
         self.model = SVR()
 
     def objective(self, trial):
@@ -134,8 +165,8 @@ class svr_optimizer(OptimizerPipeline):
         return super().objective()
 
 class ridge_optimizer(OptimizerPipeline):
-    def __init__(self, train_x, valid_x, train_y, valid_y):
-        super().__init__(train_x, valid_x, train_y, valid_y)
+    def __init__(self, X_y_dict, model_type="both", cv:int=0):
+        super().__init__(X_y_dict, model_type, cv)
         self.model = Ridge()
 
     def objective(self, trial):
@@ -146,8 +177,8 @@ class ridge_optimizer(OptimizerPipeline):
         return super().objective()
 
 class huber_optimizer(OptimizerPipeline):
-    def __init__(self, train_x, valid_x, train_y, valid_y):
-        super().__init__(train_x, valid_x, train_y, valid_y)
+    def __init__(self, X_y_dict, model_type="both", cv:int=0):
+        super().__init__(X_y_dict, model_type, cv)
         self.model = HuberRegressor()
 
     def objective(self, trial):
@@ -155,6 +186,19 @@ class huber_optimizer(OptimizerPipeline):
             "alpha": trial.suggest_float("alpha", 0.1, 5.0, log=True),
             "epsilon": trial.suggest_float("epsilon", 1.35, 100, log=True),
             "fit_intercept": trial.suggest_categorical("fit_intercept", [True, False]),
+        }
+        return super().objective()
+
+class knn_optimizer(OptimizerPipeline):
+    def __init__(self, X_y_dict, model_type="both", cv:int=0):
+        super().__init__(X_y_dict, model_type, cv)
+        self.model = KNeighborsRegressor()
+
+    def objective(self, trial):
+        self.param = {
+            "n_neighbors": trial.suggest_int("n_neighbors", 2, 64, step=1),
+            "weights": trial.suggest_categorical("weights", ['uniform', 'distance']),
+            "p": trial.suggest_categorical("p", [1, 2]),
         }
         return super().objective()
 
@@ -168,22 +212,6 @@ class model_box:
             self.model_names.discard(ignore)
         self.model_types = set([f.split("_")[1].strip('.json') for f in files])
 
-    def get_model(self, model_name):
-        if model_name == 'lgbm':
-            return lgb.LGBMRegressor()
-        elif model_name == 'xgb':
-            return xgb.XGBRegressor()
-        elif model_name == 'rf':
-            return RandomForestRegressor()
-        elif model_name == 'svr':
-            return SVR()
-        elif model_name == 'ridge':
-            return Ridge()
-        elif model_name == 'huber':
-            return HuberRegressor()
-        else:
-            raise ValueError('Unknown model.')
-
     def to_dicts(self):
         model_candidates, model_scores = {}, {}
         for mname in self.model_names:
@@ -192,7 +220,7 @@ class model_box:
             for mtype in self.model_types:
                 with open(f'{self.MODELS_PATH}/{mname}_{mtype}.json', 'r') as fp:
                     tmp = json.load(fp)
-                    model_type_dict[mtype] = self.get_model(mname).set_params(**tmp['params'])
+                    model_type_dict[mtype] = _get_model(mname).set_params(**tmp['params'])
                     score_type_dict[mtype] = tmp['value']
                     fp.close()
 
