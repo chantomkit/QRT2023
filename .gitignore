@@ -1,5 +1,5 @@
 __pycache__/
 
-voting_models/
-base_models/
+voting_models*/
+base_models*/
 *.csv

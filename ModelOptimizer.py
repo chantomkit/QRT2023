@@ -160,11 +160,13 @@ class huber_optimizer(OptimizerPipeline):
 
 
 class model_box:
-    def __init__(self, MODELS_PATH):
+    def __init__(self, MODELS_PATH, ignore_models:list=[]):
         self.MODELS_PATH = MODELS_PATH
         files = os.listdir(MODELS_PATH)
-        self.model_names = np.unique([f.split("_")[0] for f in files])
-        self.model_types = np.unique([f.split("_")[1].strip('.json') for f in files])
+        self.model_names = set([f.split("_")[0] for f in files])
+        for ignore in ignore_models:
+            self.model_names.discard(ignore)
+        self.model_types = set([f.split("_")[1].strip('.json') for f in files])
 
     def get_model(self, model_name):
         if model_name == 'lgbm':
