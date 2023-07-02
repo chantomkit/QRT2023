@@ -26,9 +26,24 @@ class BasePredictors(ABC):
             self.predictions[key] = pd.DataFrame(pred, index=self.prediction_X[key].index)
 
     @abstractmethod
-    def aggregate_predictions(self, normalize=True):
+    def aggregate_predictions(self, normalize=True, dist_params:dict=None):
         self.predict_from_base_predictors(normalize)
-        pass
+        if dist_params is not None:
+            for key in dist_params.keys():
+                self.predictions[key] = self.predictions[key] * dist_params[key]['std'] + dist_params[key]['mean'] 
+
+class BasicPredictors(BasePredictors):
+    def __init__(self, model_name:str, predictors:dict, train_data:dict, prediction_X:dict, train=True) -> None:
+        super().__init__(model_name, predictors, train_data, prediction_X, train)
+        for key in self.predictors.keys():
+            if key not in ['fr', 'de', 'both']:
+                raise ValueError('Only support fr, de or both base models')
+
+    def aggregate_predictions(self, normalize=True, dist_params:dict=None):
+        super().aggregate_predictions(normalize=normalize, dist_params=dist_params)
+        for key in self.predictions.keys():
+            self.predictions[key].columns = [f'{self.model_name}_pred']
+        return self.predictions
 
 class RegionalBasedPredictors(BasePredictors):
     def __init__(self, model_name:str, predictors:dict, train_data:dict, prediction_X:dict, train=True) -> None:
@@ -38,10 +53,7 @@ class RegionalBasedPredictors(BasePredictors):
                 raise ValueError('Only support fr, de or both base models')
 
     def aggregate_predictions(self, normalize=True, dist_params:dict=None):
-        super().aggregate_predictions(normalize=normalize)
-        if dist_params is not None:
-            for key in dist_params.keys():
-                self.predictions[key] = self.predictions[key] * dist_params[key]['std'] + dist_params[key]['mean'] 
+        super().aggregate_predictions(normalize=normalize, dist_params=dist_params)
 
         self.predictions['fr'].columns = [f'{self.model_name}_regional_pred']
         self.predictions['de'].columns = [f'{self.model_name}_regional_pred']
