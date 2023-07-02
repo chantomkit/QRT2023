@@ -56,7 +56,9 @@ class dataset:
 class RegionalDatasets(dataset):
     def __init__(
         self, 
-        dfull:pd.DataFrame=None, 
+        dfull:pd.DataFrame, 
+        dfr:pd.DataFrame=None,
+        dde:pd.DataFrame=None,
         valid_ratio:float=0.2, 
         holdout_ratio:float=0, 
         exclude_X_cols_by_region:dict=None, 
@@ -76,23 +78,43 @@ class RegionalDatasets(dataset):
         tmp_valid = self.dataset_full.dvalid.copy()
         tmp_holdout = self.dataset_full.dholdout.copy()
 
-        self.dataset_fr = dataset(
-            dfull=tmp_full.loc[tmp_full.COUNTRY == 0],
-            dtrain=tmp_train.loc[tmp_train.COUNTRY == 0],
-            dvalid=tmp_valid.loc[tmp_valid.COUNTRY == 0],
-            dholdout=tmp_holdout.loc[tmp_holdout.COUNTRY == 0],
-            exclude_X_cols=exclude_X_cols_by_region['fr'], 
-            y_col=y_col
-        )
+        if dfr is None:
+            self.dataset_fr = dataset(
+                dfull=tmp_full.loc[tmp_full.COUNTRY == 0],
+                dtrain=tmp_train.loc[tmp_train.COUNTRY == 0],
+                dvalid=tmp_valid.loc[tmp_valid.COUNTRY == 0],
+                dholdout=tmp_holdout.loc[tmp_holdout.COUNTRY == 0],
+                exclude_X_cols=exclude_X_cols_by_region['fr'], 
+                y_col=y_col
+            )
+        else:
+            self.dataset_fr = dataset(
+                dfull=dfr, 
+                valid_ratio=valid_ratio, 
+                holdout_ratio=holdout_ratio, 
+                exclude_X_cols=exclude_X_cols_by_region['fr'], 
+                y_col=y_col, 
+                split=True
+            )
 
-        self.dataset_de = dataset(
-            dfull=tmp_full.loc[tmp_full.COUNTRY == 1],
-            dtrain=tmp_train.loc[tmp_train.COUNTRY == 1],
-            dvalid=tmp_valid.loc[tmp_valid.COUNTRY == 1],
-            dholdout=tmp_holdout.loc[tmp_holdout.COUNTRY == 1],
-            exclude_X_cols=exclude_X_cols_by_region['de'], 
-            y_col=y_col
-        )
+        if dde is None:
+            self.dataset_de = dataset(
+                dfull=tmp_full.loc[tmp_full.COUNTRY == 1],
+                dtrain=tmp_train.loc[tmp_train.COUNTRY == 1],
+                dvalid=tmp_valid.loc[tmp_valid.COUNTRY == 1],
+                dholdout=tmp_holdout.loc[tmp_holdout.COUNTRY == 1],
+                exclude_X_cols=exclude_X_cols_by_region['de'], 
+                y_col=y_col
+            )
+        else:
+            self.dataset_de = dataset(
+                dfull=dde, 
+                valid_ratio=valid_ratio, 
+                holdout_ratio=holdout_ratio, 
+                exclude_X_cols=exclude_X_cols_by_region['de'], 
+                y_col=y_col, 
+                split=True
+            )
 
     def to_dict(self):
         data_dict = {

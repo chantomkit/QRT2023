@@ -9,7 +9,7 @@ import lightgbm as lgb
 import xgboost as xgb
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.svm import SVR
-from sklearn.linear_model import Ridge, HuberRegressor
+from sklearn.linear_model import Ridge, HuberRegressor, Lasso, ElasticNet
 from sklearn.neighbors import KNeighborsRegressor
 
 from sklearn.model_selection import cross_val_score
@@ -35,6 +35,10 @@ def _get_model(model_name):
         return HuberRegressor()
     elif model_name == 'knn':
         return KNeighborsRegressor()
+    elif model_name == 'lasso':
+        return Lasso()
+    elif model_name == 'elasticnet':
+        return ElasticNet()
     else:
         raise ValueError('Unknown model.')
 
@@ -199,6 +203,31 @@ class knn_optimizer(OptimizerPipeline):
             "n_neighbors": trial.suggest_int("n_neighbors", 2, 64, step=1),
             "weights": trial.suggest_categorical("weights", ['uniform', 'distance']),
             "p": trial.suggest_categorical("p", [1, 2]),
+        }
+        return super().objective()
+
+class lasso_optimizer(OptimizerPipeline):
+    def __init__(self, X_y_dict, model_type="both", cv:int=0):
+        super().__init__(X_y_dict, model_type, cv)
+        self.model = Lasso()
+
+    def objective(self, trial):
+        self.param = {
+            "alpha": trial.suggest_float("alpha", 0.1, 5.0, log=True),
+            "fit_intercept": trial.suggest_categorical("fit_intercept", [True, False]),
+        }
+        return super().objective()
+
+class elasticnet_optimizer(OptimizerPipeline):
+    def __init__(self, X_y_dict, model_type="both", cv:int=0):
+        super().__init__(X_y_dict, model_type, cv)
+        self.model = ElasticNet()
+
+    def objective(self, trial):
+        self.param = {
+            "alpha": trial.suggest_float("alpha", 0.1, 5.0, log=True),
+            "l1_ratio": trial.suggest_float("l1_ratio", 0, 1),
+            "fit_intercept": trial.suggest_categorical("fit_intercept", [True, False]),
         }
         return super().objective()
 
