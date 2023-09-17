@@ -4,6 +4,8 @@ import pandas as pd
 import numpy as np
 from sklearn.model_selection import KFold
 
+from base_dataset import DataUnit
+
 class BasePredictors(ABC):
     def __init__(self, model_name:str, predictors:dict, train_data:dict, prediction_X:dict, train=True):
         self.model_name = model_name
@@ -110,3 +112,29 @@ class StackingPredictor(BasePredictors):
         first_layer_pred = self.predictions['both'].join(regional_pred)
 
         return first_layer_test_pred, first_layer_pred
+
+
+class PredictionAggregator:
+    def __init__(self, models:dict, region:str):
+        self.models = models
+        self.region = region
+
+    def fit_all(self, training_data:DataUnit):
+        self.fitted_models = {}
+        for key in self.models.keys():
+            model = self.models[key][self.region]
+            X, y = training_data.X.values, training_data.y.values.ravel()
+            model.fit(X, y)
+            self.fitted_models[key] = model
+
+    def predict_all(self, predicting_X:pd.DataFrame):
+        predictions = {}
+        for key in self.models.keys():
+            pred_X = predicting_X.values
+            predictions[key] = self.fitted_models[key].predict(pred_X)
+        self.full_predictions = pd.DataFrame(predictions, index=predicting_X.index)
+
+    def fit_predict(self, training_data:DataUnit, predicting_X:pd.DataFrame):
+        self.fit_all(training_data)
+        self.predict_all(predicting_X)
+        return self.full_predictions

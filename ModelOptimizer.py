@@ -9,11 +9,21 @@ import lightgbm as lgb
 import xgboost as xgb
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.svm import SVR
-from sklearn.linear_model import Ridge, HuberRegressor, Lasso, ElasticNet
+from sklearn.linear_model import (
+    LinearRegression,
+    Ridge, 
+    HuberRegressor, 
+    Lasso, 
+    ElasticNet, 
+    TheilSenRegressor,
+    RANSACRegressor,
+    )
 from sklearn.neighbors import KNeighborsRegressor
 
 from sklearn.model_selection import cross_val_score
 from sklearn.metrics import make_scorer
+
+from base_dataset import Dataset
 
 import optuna
 
@@ -39,31 +49,37 @@ def _get_model(model_name):
         return Lasso()
     elif model_name == 'elasticnet':
         return ElasticNet()
+    elif model_name == 'theil':
+        return TheilSenRegressor()
+    elif model_name == 'ransac':
+        return RANSACRegressor()
     else:
         raise ValueError('Unknown model.')
 
 scorer_train = make_scorer(metric_train)
 
 class OptimizerPipeline(ABC):
-    def __init__(self, X_y_dict, model_type="both", cv:int=0):
+    # def __init__(self, dataset, model_type="both", cv:int=0):
+    def __init__(self, dataset: Dataset, model_type="both", cv:int=0):
         self.cv = cv
-
-        self.train_x = X_y_dict["train"][model_type]["X"]
-        self.train_y = X_y_dict["train"][model_type]["y"]
+        self.train_x = dataset.dtrain.X.copy()
+        self.train_y = dataset.dtrain.y.copy()
         if not self.cv:
-            self.valid_x = X_y_dict["valid"][model_type]["X"]
-            self.valid_y = X_y_dict["valid"][model_type]["y"]
+            self.valid_x = dataset.dvalid.X.copy()
+            self.valid_y = dataset.dvalid.y.copy()
 
         self.model, self.param = None, None
     
     @abstractmethod
     def objective(self):
         self.model.set_params(**self.param)
+        tr_X, tr_y = self.train_x.values, self.train_y.values.ravel()
         if self.cv:
-            return np.mean(cross_val_score(self.model, self.train_x, self.train_y, scoring=scorer_train, cv=self.cv))
+            return np.mean(cross_val_score(self.model, tr_X, tr_y, scoring=scorer_train, cv=self.cv))
         else:
-            self.model.fit(self.train_x, self.train_y)
-            return metric_train(self.valid_y, self.model.predict(self.valid_x))
+            self.model.fit(tr_X, tr_y)
+            va_X, va_y = self.valid_x.values, self.valid_y.values.ravel()
+            return metric_train(va_y, self.model.predict(va_X))
 
     def run(self, verbose=1, seed=10):
         sampler = optuna.samplers.TPESampler(seed=seed)  # Make the sampler behave in a deterministic way.
@@ -86,14 +102,13 @@ class OptimizerPipeline(ABC):
             'value': self.trial.value,
             'params': self.model.get_params(),
         }
-        with open(PATH, 'w') as fp:
-            json.dump(model_dict, fp)
+        json.dump(model_dict, open(PATH, 'w'))
             
             
 
 class lgbm_optimizer(OptimizerPipeline):
-    def __init__(self, X_y_dict, model_type="both", cv:int=0, seed=42):
-        super().__init__(X_y_dict, model_type, cv)
+    def __init__(self, dataset, model_type="both", cv:int=0, seed=42):
+        super().__init__(dataset, model_type, cv)
         self.model = lgb.LGBMRegressor(random_state=seed)
 
     def objective(self, trial):
@@ -115,8 +130,8 @@ class lgbm_optimizer(OptimizerPipeline):
 
 
 class xgb_optimizer(OptimizerPipeline):
-    def __init__(self, X_y_dict, model_type="both", cv:int=0, seed=42):
-        super().__init__(X_y_dict, model_type, cv)
+    def __init__(self, dataset, model_type="both", cv:int=0, seed=42):
+        super().__init__(dataset, model_type, cv)
         self.model = xgb.XGBRegressor(random_state=seed)
 
     def objective(self, trial):
@@ -139,8 +154,8 @@ class xgb_optimizer(OptimizerPipeline):
         
 
 class rf_optimizer(OptimizerPipeline):
-    def __init__(self, X_y_dict, model_type="both", cv:int=0, seed=42):
-        super().__init__(X_y_dict, model_type, cv)
+    def __init__(self, dataset, model_type="both", cv:int=0, seed=42):
+        super().__init__(dataset, model_type, cv)
         self.model = RandomForestRegressor(random_state=seed)
 
     def objective(self, trial):
@@ -157,8 +172,8 @@ class rf_optimizer(OptimizerPipeline):
         return super().objective()
 
 class svr_optimizer(OptimizerPipeline):
-    def __init__(self, X_y_dict, model_type="both", cv:int=0):
-        super().__init__(X_y_dict, model_type, cv)
+    def __init__(self, dataset, model_type="both", cv:int=0):
+        super().__init__(dataset, model_type, cv)
         self.model = SVR()
 
     def objective(self, trial):
@@ -169,8 +184,8 @@ class svr_optimizer(OptimizerPipeline):
         return super().objective()
 
 class ridge_optimizer(OptimizerPipeline):
-    def __init__(self, X_y_dict, model_type="both", cv:int=0):
-        super().__init__(X_y_dict, model_type, cv)
+    def __init__(self, dataset, model_type="both", cv:int=0):
+        super().__init__(dataset, model_type, cv)
         self.model = Ridge()
 
     def objective(self, trial):
@@ -181,8 +196,8 @@ class ridge_optimizer(OptimizerPipeline):
         return super().objective()
 
 class huber_optimizer(OptimizerPipeline):
-    def __init__(self, X_y_dict, model_type="both", cv:int=0):
-        super().__init__(X_y_dict, model_type, cv)
+    def __init__(self, dataset, model_type="both", cv:int=0):
+        super().__init__(dataset, model_type, cv)
         self.model = HuberRegressor()
 
     def objective(self, trial):
@@ -194,8 +209,8 @@ class huber_optimizer(OptimizerPipeline):
         return super().objective()
 
 class knn_optimizer(OptimizerPipeline):
-    def __init__(self, X_y_dict, model_type="both", cv:int=0):
-        super().__init__(X_y_dict, model_type, cv)
+    def __init__(self, dataset, model_type="both", cv:int=0):
+        super().__init__(dataset, model_type, cv)
         self.model = KNeighborsRegressor()
 
     def objective(self, trial):
@@ -207,8 +222,8 @@ class knn_optimizer(OptimizerPipeline):
         return super().objective()
 
 class lasso_optimizer(OptimizerPipeline):
-    def __init__(self, X_y_dict, model_type="both", cv:int=0):
-        super().__init__(X_y_dict, model_type, cv)
+    def __init__(self, dataset, model_type="both", cv:int=0):
+        super().__init__(dataset, model_type, cv)
         self.model = Lasso()
 
     def objective(self, trial):
@@ -219,8 +234,8 @@ class lasso_optimizer(OptimizerPipeline):
         return super().objective()
 
 class elasticnet_optimizer(OptimizerPipeline):
-    def __init__(self, X_y_dict, model_type="both", cv:int=0):
-        super().__init__(X_y_dict, model_type, cv)
+    def __init__(self, dataset, model_type="both", cv:int=0):
+        super().__init__(dataset, model_type, cv)
         self.model = ElasticNet()
 
     def objective(self, trial):
@@ -239,7 +254,7 @@ class model_box:
         self.model_names = set([f.split("_")[0] for f in files])
         for ignore in ignore_models:
             self.model_names.discard(ignore)
-        self.model_types = set([f.split("_")[1].strip('.json') for f in files])
+        self.model_types = set([f.split("_")[1].replace('.json', '') for f in files])
 
     def to_dicts(self):
         model_candidates, model_scores = {}, {}
