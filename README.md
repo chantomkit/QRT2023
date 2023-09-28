@@ -9,14 +9,13 @@ https://challengedata.ens.fr/participants/challenges/97/
 - `notebooks/`: Jupyter Notebooks for running my whole workflow
 
 ## Modelling
-1. Splitting dataset into 3 set, according regions and data distributions
+1. Splitting dataset into 3 set, according to regions and data distributions
 2. Feature selection on each set, by Correlation or LASSO
 3. Linear models will use selected features, Tree models use all features
 4. Hyperparameters optimization by CV
-5. Ensembles of model predictions (individual model predictions will first be bootstrapped)
+5. Ensembles of model predictions (individual model will first be bootstrapped)
 
 ## Scores
-
 Spearsman Correlation
 
 | LB Type | Score | Dated | Remarks |
