@@ -1,1 +1,0 @@
-{"value": 0.14613827349121467, "params": {"alpha": 4.646706652444814, "copy_X": true, "fit_intercept": true, "max_iter": 1000, "normalize": "deprecated", "positive": false, "precompute": false, "random_state": null, "selection": "cyclic", "tol": 0.0001, "warm_start": false}}
