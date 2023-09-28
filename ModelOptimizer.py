@@ -248,15 +248,13 @@ class elasticnet_optimizer(OptimizerPipeline):
 
 
 class model_box:
-    def __init__(self, MODELS_PATH, ignore_models:list=[]):
+    def __init__(self, MODELS_PATH):
         self.MODELS_PATH = MODELS_PATH
         files = os.listdir(MODELS_PATH)
-        self.model_names = set([f.split("_")[0] for f in files])
-        for ignore in ignore_models:
-            self.model_names.discard(ignore)
-        self.model_types = set([f.split("_")[1].replace('.json', '') for f in files])
+        self.model_names = set([f.split("_")[0] for f in files if '.json' in f])
+        self.model_types = set([f.split("_")[1].replace('.json', '') for f in files if '.json' in f])
 
-    def to_dicts(self):
+    def to_dict(self):
         model_candidates, model_scores = {}, {}
         for mname in self.model_names:
             model_type_dict, score_type_dict = {}, {}
