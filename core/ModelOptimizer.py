@@ -10,7 +10,6 @@ import xgboost as xgb
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.svm import SVR
 from sklearn.linear_model import (
-    LinearRegression,
     Ridge, 
     HuberRegressor, 
     Lasso, 
@@ -23,7 +22,7 @@ from sklearn.neighbors import KNeighborsRegressor
 from sklearn.model_selection import cross_val_score
 from sklearn.metrics import make_scorer
 
-from base_dataset import Dataset
+from core.Dataset import Dataset
 
 import optuna
 
@@ -59,7 +58,6 @@ def _get_model(model_name):
 scorer_train = make_scorer(metric_train)
 
 class OptimizerPipeline(ABC):
-    # def __init__(self, dataset, model_type="both", cv:int=0):
     def __init__(self, dataset: Dataset, model_type="both", cv:int=0):
         self.cv = cv
         self.train_x = dataset.dtrain.X.copy()
