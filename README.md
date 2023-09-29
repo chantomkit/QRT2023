@@ -5,7 +5,7 @@ Personal Competition Project Codebase
 https://challengedata.ens.fr/participants/challenges/97/
 
 ## Directory structures
-- `core/`: core modules for my DS/ML pipelines for data processing, analytics, model training, predictions
+- `QRT2023/`: self-written library and modules for DS/ML pipelines for data processing, analytics, model training, predictions in this competition
 - `notebooks/`: Jupyter Notebooks for running my whole workflow
 
 ## Modelling
