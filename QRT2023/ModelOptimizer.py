@@ -22,7 +22,7 @@ from sklearn.neighbors import KNeighborsRegressor
 from sklearn.model_selection import cross_val_score
 from sklearn.metrics import make_scorer
 
-from core.Dataset import Dataset
+from QRT2023.Dataset import Dataset
 
 import optuna
 
