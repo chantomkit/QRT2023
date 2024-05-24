@@ -5,7 +5,7 @@ Personal Competition Project Codebase
 https://challengedata.ens.fr/participants/challenges/97/
 
 ## Directory structures
-- `QRT2023/`: self-written library and modules for DS/ML pipelines for data processing, analytics, model training, predictions in this competition
+- `QRT2023/`: Modules for DS/ML pipelines for data processing, analytics, model training, predictions in this competition
 - `notebooks/`: Jupyter Notebooks for running my whole workflow
 
 ## Modelling
@@ -20,9 +20,7 @@ https://challengedata.ens.fr/participants/challenges/97/
 ## Scores
 Spearsman Correlation
 
-| LB Type | Score | Dated | Remarks |
-| -------- | ------- | ------- | ------- |
-| Public LB | 0.295 | June 22, 2023 | Updated realtime |
-| Private LB | 0.253 | May 25, 2023 | Updated twice a year on the 15th of December and on the 15th of June |
-
-*Note: 0.295 is probably a lucky score, my usual submission ranges from 0.25-0.26*
+| LB Type | Score |
+| -------- | ------- |
+| Public LB | 0.295 |
+| Private LB | 0.0.251 |
