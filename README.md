@@ -1,6 +1,6 @@
 Personal Competition Project Codebase
 
-**Can you explain the price of electricity? by QRT**, Private LB ends at 15 Dec 2023.
+**Can you explain the price of electricity? by QRT**
 
 https://challengedata.ens.fr/participants/challenges/97/
 
@@ -23,4 +23,4 @@ Spearsman Correlation
 | LB Type | Score |
 | -------- | ------- |
 | Public LB | 0.295 |
-| Private LB | 0.0.251 |
+| Private LB | 0.251 |
